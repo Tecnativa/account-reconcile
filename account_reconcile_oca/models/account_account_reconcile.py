@@ -79,8 +79,17 @@ class AccountAccountReconcile(models.Model):
     def _having(self):
         return """
             HAVING
-                SUM(aml.debit) > 0
-                AND SUM(aml.credit) > 0
+                (
+                    SUM(aml.debit) > 0
+                    AND SUM(aml.credit) > 0
+                    AND aml.partner_id IS NOT NULL
+                ) OR (
+                    aml.partner_id IS NULL
+                    AND (
+                        SUM(aml.debit) > 0
+                        OR SUM(aml.credit) > 0
+                    )
+                )
         """
 
     def _compute_reconcile_data_info(self):

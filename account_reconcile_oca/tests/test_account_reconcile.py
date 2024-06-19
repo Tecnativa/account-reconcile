@@ -64,6 +64,7 @@ class TestReconciliationWidget(TestAccountReconciliationCommon):
             .copy()
         )
         cls.non_current_assets_account.reconcile = True
+        cls.partner = cls.env["res.partner"].create({"name": "Test partner"})
         cls.move_1 = cls.env["account.move"].create(
             {
                 "line_ids": [
@@ -72,6 +73,7 @@ class TestReconciliationWidget(TestAccountReconciliationCommon):
                         0,
                         {
                             "account_id": cls.current_assets_account.id,
+                            "partner_id": cls.partner.id,
                             "name": "DEMO",
                             "credit": 100,
                         },
@@ -170,6 +172,54 @@ class TestReconciliationWidget(TestAccountReconciliationCommon):
             [("account_id", "=", account.id)]
         )
         self.assertFalse(reconcile_account)
+
+    def test_reconcile_manual(self):
+        account = self.current_assets_account
+        reconcile_account = self.env["account.account.reconcile"].search(
+            [("account_id", "=", account.id)]
+        )
+        self.assertFalse(reconcile_account)
+        extra_move = self.env["account.move"].create(
+            {
+                "line_ids": [
+                    (
+                        0,
+                        0,
+                        {
+                            "account_id": account.id,
+                            "name": "DEMO",
+                            "debit": 100,
+                        },
+                    ),
+                    (
+                        0,
+                        0,
+                        {
+                            "account_id": self.non_current_assets_account.id,
+                            "name": "DEMO",
+                            "credit": 100,
+                        },
+                    ),
+                ]
+            }
+        )
+        extra_move.action_post()
+        move_lines = extra_move.line_ids.filtered(lambda r: r.account_id == account)
+        move_lines += self.move_1.line_ids.filtered(lambda r: r.account_id == account)
+        self.assertEqual(move_lines.mapped("reconciled"), [False, False])
+        res = move_lines.action_reconcile_manually()
+        reconcile_account = (
+            self.env[res["res_model"]]
+            .with_context(**res["context"])
+            .search(res["domain"])
+        )
+        self.assertTrue(reconcile_account)
+        with Form(reconcile_account) as f:
+            f.add_account_move_line_id = extra_move.line_ids.filtered(
+                lambda r: r.account_id == account
+            )
+        reconcile_account.reconcile()
+        self.assertEqual(move_lines.mapped("reconciled"), [True, True])
 
     def test_clean_reconcile(self):
         account = self.non_current_assets_account

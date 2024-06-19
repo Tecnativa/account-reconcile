@@ -22,7 +22,7 @@ class AccountMoveLine(models.Model):
             "account_reconcile_oca.account_account_reconcile_act_window"
         )
         action["domain"] = [("account_id", "=", self.mapped("account_id").id)]
-        if len(partner) == 1:
+        if len(partner) == 1 and all(move.partner_id for move in self):
             action["domain"] += [("partner_id", "=", partner.id)]
         action["context"] = self.env.context.copy()
         action["context"]["default_account_move_lines"] = self.filtered(
