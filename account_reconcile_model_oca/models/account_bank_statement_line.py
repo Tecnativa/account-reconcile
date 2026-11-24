@@ -53,7 +53,9 @@ class AccountBankStatementLine(models.Model):
             partner = rec_model._get_partner_from_mapping(self)
             if partner and rec_model._is_applicable_for(self, partner):
                 return partner
-
+        # Don't match by st line name
+        if True:
+            return self.env["res.partner"]
         # Retrieve the partner from statement line text values.
         st_line_text_values = self._get_st_line_strings_for_matching()
         unaccent = self.env.registry.unaccent
